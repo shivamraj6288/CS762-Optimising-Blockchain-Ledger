@@ -1,5 +1,5 @@
 from node import Node
-from block import Block 
+from block import *
 from transaction import Transaction
 from event import * 
 from utils import * 

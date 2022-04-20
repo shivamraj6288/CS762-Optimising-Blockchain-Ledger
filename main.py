@@ -1,7 +1,7 @@
 import queue
 import numpy as np
 import heapq
-from node import Node
+# from node import Node
 from transaction import Transaction
 from event import *
 import networkx as nx
@@ -12,7 +12,8 @@ from utils import *
 from params import *
 from adversary import *
 from stubborn import *
-from node import nodes, create_nodes
+# from node import nodes, create_nodes
+from node import *
 
 
 
@@ -24,7 +25,7 @@ class Simulation:
         """
         Initializes the simulation object
         """
-        no_slow = int(slow*(no_nodes))
+        # no_slow = int(slow*(no_nodes))
         self.G = nx.Graph()
         self.gblock = Block(pbid=0, bid=1, txnIncluded=set(), miner=-1)
         self.gblock.balance = [0]*no_nodes

@@ -2,14 +2,15 @@
 import copy
 
 # from numpy.core.numeric import tensordot 
-from block import Block, RegBlock
+# from block import Block, RegBlock
+from block import *
 from transaction import Transaction
 from event import *
 # import heapq 
 import numpy as np 
 from random import sample
 from utils import *
-from block import Blockchain
+# from block import Blockchain
 from params import *
 from queue import pushq
 
@@ -34,7 +35,10 @@ class Node:
         self.regenesis_status=False
         self.accounts=set()
         self.regBlockRecv=set()
+
         self.regenesisTime=[]
+        self.size_of_blockchain = []
+
         self.waiting_to_merge =False 
         self.last_reg_block = None 
         self.new_blocks=set()
@@ -75,6 +79,8 @@ class Node:
             action = TxnRecv(time=t, sender=self.nid, receiver=a, txn=event.txn)
             pushq(action)
 
+    def recordChainSize(self, time):
+        self.size_of_blockchain.append(len(self.blockchain.blocks), time)
     # this function is called if node wants to mine a new block with given parent block
     def mineNewBlock(self, pblock, start_time):
         if (self.empty_block_mining):
@@ -156,6 +162,7 @@ class Node:
         self.lastBlock = block 
         self.regenesis_status=True
         self.startRegTime=start_time
+        
         # self.accounts=copy(block.balance)
         self.accounts=set(enumerate(block.balance))
         accounts_to_include=set(sample(self.accounts,min(num_acc_bal_per_block,len(self.accounts))))
@@ -186,6 +193,7 @@ class Node:
 
     def startReGenesis(self,block,start_time):
         self.empty_block_mining = True 
+        self.longest_chain_length = 0
         txnId = np.random.randint(0,2**31-1)
         coinBaseTxn = Transaction(tid=txnId, sender=-1, receiver=self, value=mining_feee)
         txns = set () 
@@ -204,12 +212,15 @@ class Node:
         
         is_longest = self.blockchain.add_block(event.block, event.time)
 
+        self.recordChainSize(event.time)
+
         if (is_longest):
             self.empty_block_depth+=1
             if self.empty_block_depth == empty_blocks_length:
                 self.empty_block_depth = 0 
                 self.empty_block_mining = False 
                 self.startReGenesisPhase2(block=event.block, start_time = event.time)
+                self.mineNewBlock(block = event.block, start_time=event.time)
             else:
                 self.mineEmptyBlock(block = event.block, start_time=event.time)
 
@@ -222,13 +233,15 @@ class Node:
         self.blockReceived.add(event.block.bid)
         is_longest = self.blockchain.add_block(event.block, event.time)
 
-
+        self.recordChainSize(event.time)
+        
         if (is_longest):
             self.empty_block_depth+=1
             if self.empty_block_depth == empty_blocks_length:
                 self.empty_block_depth = 0 
                 self.empty_block_mining = False 
                 self.startReGenesisPhase2(block=event.block, start_time = event.time)
+                self.mineNewBlock(block = event.block, start_time=event.time)
             else:
                 self.mineEmptyBlock(block = event.block, start_time=event.time)
 
@@ -245,6 +258,9 @@ class Node:
         self.regBlockRecv.add(event.block.bid)
         self.new_blocks.add(event.block.bid)
         is_long_reg = self.blockchain.add_reg_block(block=event.block, time=event.time)
+
+        self.recordChainSize(event.time)
+
         if is_long_reg: 
             for a in self.peer:
                 lat = computeLatency(i=self, j=a, m=100+len(event.block.txnIncluded))
@@ -263,6 +279,9 @@ class Node:
         if not event.block.is_valid: # we do not propogate invalid blocks
             return
         is_longest = self.blockchain.add_reg_block(event.block, event.time)
+
+        self.recordChainSize(event.time)
+
         if is_longest:
             self.mineRegBlock(block=event.block, start_time=event.time)
 
@@ -297,11 +316,11 @@ class Node:
         
         is_longest = self.blockchain.add_block(event.block, event.time)
 
-        
+        self.recordChainSize(event.time)
 
         if is_longest:
             self.longest_chain_length+=1
-            if self.longest_chain_length>=max_length_blockchain and self.regenesis_status==False:
+            if self.longest_chain_length>=max_length_blockchain and self.empty_block_mining==False:
                 self.startReGenesis(block=event.block,start_time=event.time)
             if event.block.regPbid.bid == self.last_reg_block.bid:
                 self.waiting_to_merge=False
@@ -322,6 +341,8 @@ class Node:
         
         is_longest = self.blockchain.add_block(event.block, event.time)
 
+        self.recordChainSize(event.time)
+        
         if (self.regenesis_status):
             self.new_blocks.add(event.block.bid)
 
@@ -331,7 +352,7 @@ class Node:
 
         if is_longest:
             self.longest_chain_length+=1
-            if self.longest_chain_length>=max_length_blockchain and self.regenesis_status==False:
+            if self.longest_chain_length>=max_length_blockchain and self.empty_block_mining==False:
                 self.startReGenesis(block=event.block,start_time=event.time)
             # print(f"{event.block}, Time:{pretty(event.time,10)}")
             if event.block.regPbid.bid == self.last_reg_block.bid:
