@@ -12,6 +12,9 @@ from utils import *
 from params import *
 from adversary import *
 from stubborn import *
+from node import nodes, create_nodes
+
+
 
 def sample_exp(mean):
     return np.random.exponential(mean)
@@ -21,17 +24,19 @@ class Simulation:
         """
         Initializes the simulation object
         """
-        no_slow = int(slow*(no_nodes-1))
+        no_slow = int(slow*(no_nodes))
         self.G = nx.Graph()
         self.gblock = Block(pbid=0, bid=1, txnIncluded=set(), miner=-1)
         self.gblock.balance = [0]*no_nodes
-        self.nodes = [
-            Node(nid=i, speed=0, genesis=self.gblock, miningTime=ttmine[i])
-            for i in range(no_slow)
-        ] + [
-            Node(nid=i, speed=1, genesis=self.gblock, miningTime=ttmine[i])
-            for i in range(no_slow, (no_nodes-1))
-        ]
+        # self.nodes = [
+        #     Node(nid=i, speed=0, genesis=self.gblock, miningTime=ttmine[i])
+        #     for i in range(no_slow)
+        # ] + [
+        #     Node(nid=i, speed=1, genesis=self.gblock, miningTime=ttmine[i])
+        #     for i in range(no_slow, no_nodes)
+        # ]
+        create_nodes(no_nodes=no_nodes,slow = slow, ttmine=ttmine)
+        self.nodes = nodes 
         self.txngen_mean = txngen_mean
         self.total_all_blocks_gen = 0
         initLatency(no_nodes)
@@ -42,6 +47,7 @@ class Simulation:
         #     self.nodes.append(StubNode(nid=no_nodes-1, genesis=self.gblock, miningTime=ttmine[-1]))
 
         self.generate_network(int(adversary_peers_frac*(no_nodes-1)))
+        nodes = self.nodes
 
 
     def generate_network(self, adversary_peers_num):
@@ -162,6 +168,11 @@ class Simulation:
             event.receiver.verifyAndAddReceivedRegBlock(event)
         elif(event.eventId==6):
             event.block.miner.receiveSelfMinedRegBlock(event)
+        
+        elif (event.eventId==7):
+            event.receiver.verifyAndAddReceivedEmptyBlock(event)
+        elif event.eventId == 8:
+            event.block.miner.recvSelfMinedEmptyBlock(event)
         else:
             print("bug in simulation.handle()")
 

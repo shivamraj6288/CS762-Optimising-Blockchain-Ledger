@@ -3,6 +3,7 @@ from operator import is_
 from utils import pretty
 from params import *
 import networkx as nx
+from main import nodes 
 
 # This data structure contains all the details of a single block and the blockchain
 
@@ -118,6 +119,7 @@ class Block:
 
 class RegBlock(Block):
     def __init__(self, bid, pbid, txnIncluded, miner, accIncluded, first=False):
+        # first will tell whether this is first regensis block or not, which will help to decide wether to copy from previous bock or not 
         # accIncluded stores all the accounts whose balance is stored in this regenesis
         self.accIncluded=set()
         if not first:
@@ -125,7 +127,14 @@ class RegBlock(Block):
         for a in accIncluded:
             self.accIncluded.add(a)
         
+        txns=set()
+        for a in txnIncluded:
+            a.sender=nodes[a.sender]
+            a.receiver=nodes[a.receiver]
+
+        
+        
 
         self.accIncluded=accIncluded
-        Block.__init__(bid, pbid, txnIncluded, miner)
+        super().__init__(bid=bid, pbid=pbid, txnIncluded=txnIncluded, miner=miner)
         

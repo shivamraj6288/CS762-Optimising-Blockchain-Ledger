@@ -16,7 +16,9 @@ from queue import pushq
 num_acc_bal_per_block=10
 max_length_blockchain=100
 mining_feee=50
+empty_blocks_length = 25 
 
+nodes = None 
 
 class Node:
      
@@ -35,6 +37,10 @@ class Node:
         self.regenesisTime=[]
         self.waiting_to_merge =False 
         self.last_reg_block = None 
+        self.new_blocks=set()
+        self.empty_block_depth = 0 
+        self.empty_block_mining = False 
+        self.longest_chain_length = 0 
         
 
 
@@ -71,6 +77,8 @@ class Node:
 
     # this function is called if node wants to mine a new block with given parent block
     def mineNewBlock(self, pblock, start_time):
+        if (self.empty_block_mining):
+            return 
         remaingTxn = self.txnReceived.difference(pblock.txnPool)
         txnToInclude = set(sample(remaingTxn, min(900,len(remaingTxn))))
         toBeDeleted = set()
@@ -100,24 +108,17 @@ class Node:
         newMiningEvent = BlockMined(time=mining_time, block=newBlock)
         pushq(newMiningEvent)
     
-    def startMerging(self):
+    def startMerging(self, start_time):
         self.waiting_to_merge = True 
-        block = self.lastBlock
-        bid = block.bid
-        regBlock=None
-        while (bid in self.blockchain.blocks.keys()):
-            block = block.pbid 
-            regBlock=block.regPbid
-            self.blockchain.blocks.pop(bid)
-            bid = block.bid 
         
-        if regBlock!=None:
-            block = regBlock
-            bid = block.bid 
-            while (bid in self.blockchain.blocks.keys()):
-                block = block.pbid 
+        for bid in self.blockchain.blocks.keys():
+            if bid not in self.new_blocks:
                 self.blockchain.blocks.pop(bid)
-                bid=block.bid 
+        
+        self.mineNewBlock(pblock=self.blockchain.head,start_time=start_time)
+
+        
+            
         
             
 
@@ -131,36 +132,36 @@ class Node:
             self.endRegTime=start_time
             self.regenesisTime.append(self.endRegTime-self.startRegTime)
             self.last_reg_block = block 
-            self.startMerging()
+            self.startMerging(start_time)
               
             
             return 
         accounts_to_include=set(sample(remaining_accounts,min(num_acc_bal_per_block,len(self.accounts))))
         txns=set()
         for acc in accounts_to_include:
-            txns.add(Transaction(tid=np.random.randint(0, 2**31-1),sender=0,receiver=acc[0],value=acc[1]))
+            txns.add(Transaction(tid=np.random.randint(0, 2**31-1),sender=0,receiver=nodes[acc[0]],value=acc[1]))
         # self.accounts=self.accounts.difference(accounts_to_include)
         txnId = np.random.randint(0,2**31-1)
         coinBaseTxn = Transaction(tid=txnId, sender=-1, receiver=self, value=mining_feee)
+        txns.add(coinBaseTxn)
 
         newBlockId = np.random.randint(0,2**31-1)
         newRegBlock= RegBlock(bid=newBlockId,pbid=block,txnIncluded=txns,miner=self,accIncluded=accounts_to_include)
         mining_time=start_time+np.random.exponential(self.miningTime)
         newRegMiningEvent = RegBlockMined(time=mining_time,block=newRegBlock)
         pushq(newRegMiningEvent)
-
-
     
-    def startReGenesis(self,block,start_time):
+
+    def startReGenesisPhase2(self,block,start_time):
         self.lastBlock = block 
         self.regenesis_status=True
         self.startRegTime=start_time
         # self.accounts=copy(block.balance)
-        self.accounts=set(block.balance)
+        self.accounts=set(enumerate(block.balance))
         accounts_to_include=set(sample(self.accounts,min(num_acc_bal_per_block,len(self.accounts))))
         txns=set()
         for acc in accounts_to_include:
-            txns.add(Transaction(tid=np.random.randint(0, 2**31-1),sender=-1,receiver=acc[0],value=acc[1]))
+            txns.add(Transaction(tid=np.random.randint(0, 2**31-1),sender=-1,receiver=nodes[acc[0]],value=acc[1]))
         txnId = np.random.randint(0,2**31-1)
         coinBaseTxn = Transaction(tid=txnId, sender=-1, receiver=self, value=mining_feee)
         txns.add(coinBaseTxn)
@@ -171,10 +172,78 @@ class Node:
         newRegMiningEvent = RegBlockMined(time=mining_time,block=newRegBlock)
         pushq(newRegMiningEvent)
         
+
+    def mineEmptyBlock(self,block,start_time):
+        txnId = np.random.randint(0,2**31-1)
+        coinBaseTxn = Transaction(tid=txnId, sender=-1, receiver=self, value=mining_feee)
+        txns = set () 
+        txns.add(coinBaseTxn)
+        newBlockId = np.random.randint(0,2**31-1)
+        newBlock = Block(bid=newBlockId, pbid=block, txnIncluded=txns, miner=self)
+        mining_time = start_time + np.random.exponential(self.miningTime)
+        newMiningEvent = EmptyBlockMined(time=mining_time, block=newBlock)
+        pushq(newMiningEvent)
+
+    def startReGenesis(self,block,start_time):
+        self.empty_block_mining = True 
+        txnId = np.random.randint(0,2**31-1)
+        coinBaseTxn = Transaction(tid=txnId, sender=-1, receiver=self, value=mining_feee)
+        txns = set () 
+        txns.add(coinBaseTxn)
+        newBlockId = np.random.randint(0,2**31-1)
+        newBlock = Block(bid=newBlockId, pbid=block, txnIncluded=txns, miner=self)
+        mining_time = start_time + np.random.exponential(self.miningTime)
+        newMiningEvent = EmptyBlockMined(time=mining_time, block=newBlock)
+        pushq(newMiningEvent)
+
+    
+    def verifyAndAddReceivedEmptyBlock(self, event):
+        self.blockReceived.add(event.block.bid)
+        if event.block.bid in self.blockReceived:
+            return 
+        
+        is_longest = self.blockchain.add_block(event.block, event.time)
+
+        if (is_longest):
+            self.empty_block_depth+=1
+            if self.empty_block_depth == empty_blocks_length:
+                self.empty_block_depth = 0 
+                self.empty_block_mining = False 
+                self.startReGenesisPhase2(block=event.block, start_time = event.time)
+            else:
+                self.mineEmptyBlock(block = event.block, start_time=event.time)
+
+        for a in self.peer:
+            lat = computeLatency(i=self, j=a, m=100+len(event.block.txnIncluded))
+            action = EmptyBlockRecv(time=event.time+lat, sender=self, receiver=a, block=event.block)
+            pushq(action)
+    
+    def recvSelfMinedEmptyBlock(self,event):
+        self.blockReceived.add(event.block.bid)
+        is_longest = self.blockchain.add_block(event.block, event.time)
+
+
+        if (is_longest):
+            self.empty_block_depth+=1
+            if self.empty_block_depth == empty_blocks_length:
+                self.empty_block_depth = 0 
+                self.empty_block_mining = False 
+                self.startReGenesisPhase2(block=event.block, start_time = event.time)
+            else:
+                self.mineEmptyBlock(block = event.block, start_time=event.time)
+
+        for a in self.peer:
+            lat = computeLatency(i=self, j=a, m=100+len(event.block.txnIncluded))
+            action = EmptyBlockRecv(time=event.time+lat, sender=self, receiver=a, block=event.block)
+            pushq(action)
+    
+    
+    
         
     
     def receiveSelfMinedRegBlock(self,event):
         self.regBlockRecv.add(event.block.bid)
+        self.new_blocks.add(event.block.bid)
         is_long_reg = self.blockchain.add_reg_block(block=event.block, time=event.time)
         if is_long_reg: 
             for a in self.peer:
@@ -190,6 +259,7 @@ class Node:
         if event.block.bid in self.regBlockRecv:
             return 
         self.regBlockRecv.add(event.block.bid)
+        self.new_blocks.add(event.block.bid)
         if not event.block.is_valid: # we do not propogate invalid blocks
             return
         is_longest = self.blockchain.add_reg_block(event.block, event.time)
@@ -218,6 +288,9 @@ class Node:
         if event.block.bid in self.blockReceived:
             return 
         self.blockReceived.add(event.block.bid)
+        
+        if(self.regenesis_status):
+            self.new_blocks.add(event.block.bid)
 
         if not event.block.is_valid: # we do not propogate invalid blocks
             return
@@ -227,9 +300,10 @@ class Node:
         
 
         if is_longest:
-            if len(self.blockchain.blocks)==max_length_blockchain and self.regenesis_status==False:
+            self.longest_chain_length+=1
+            if self.longest_chain_length>=max_length_blockchain and self.regenesis_status==False:
                 self.startReGenesis(block=event.block,start_time=event.time)
-            if event.block.regPbid == self.last_reg_block:
+            if event.block.regPbid.bid == self.last_reg_block.bid:
                 self.waiting_to_merge=False
                 self.last_reg_block = None 
             self.mineNewBlock(pblock=event.block, start_time=event.time)
@@ -245,16 +319,22 @@ class Node:
     # node waits a block whose addition will, create primary chain
     def receiveSelfMinedBlock(self, event):
         self.blockReceived.add(event.block.bid)
+        
         is_longest = self.blockchain.add_block(event.block, event.time)
 
-        if len(self.blockchain.blocks)==max_length_blockchain and self.regenesis_status==False:
-            self.startReGenesis(block=event.block,start_time=event.time)
+        if (self.regenesis_status):
+            self.new_blocks.add(event.block.bid)
+
+        
 
         rv = 0
 
         if is_longest:
+            self.longest_chain_length+=1
+            if self.longest_chain_length>=max_length_blockchain and self.regenesis_status==False:
+                self.startReGenesis(block=event.block,start_time=event.time)
             # print(f"{event.block}, Time:{pretty(event.time,10)}")
-            if event.block.regPbid == self.last_reg_block:
+            if event.block.regPbid.bid == self.last_reg_block.bid:
                 self.waiting_to_merge=False
                 self.last_reg_block = None 
             rv = 1
@@ -266,3 +346,16 @@ class Node:
         
         return rv
     
+
+
+def create_nodes(no_nodes, slow, ttmine):
+    no_slow = int(slow*(no_nodes))
+    gblock = Block(pbid=0, bid=1, txnIncluded=set(), miner=-1)
+    gblock.balance = [0]*no_nodes
+    nodes = [
+            Node(nid=i, speed=0, genesis=gblock, miningTime=ttmine[i])
+            for i in range(no_slow)
+        ] + [
+            Node(nid=i, speed=1, genesis=gblock, miningTime=ttmine[i])
+            for i in range(no_slow, no_nodes)
+        ]

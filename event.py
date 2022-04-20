@@ -42,6 +42,16 @@ class RegBlockMined(Event):
         self.block=block
         Event.__init__(time, eventId=6)
 
+class EmptyBlockRecv(Event):
+    def __init__(self, time, sender, receiver, block):
+        self.block = block 
+        Event.__init__(time, eventId=7, sender = sender, receiver=receiver)
+
+class EmptyBlockMined(Event):
+    def __init__(self, time, block):
+        self.block = block 
+        Event.__init__(time, eventId=8)
+
 
 
 

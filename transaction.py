@@ -1,3 +1,4 @@
+from utils import pretty
 class Transaction:
     def __init__(self, tid, sender, receiver, value):
         self.sender = sender
