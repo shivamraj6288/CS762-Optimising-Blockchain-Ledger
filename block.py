@@ -51,6 +51,12 @@ class Blockchain:
         elif self.regHead.length < block.length :
             self.regHead=block 
             is_long = True 
+        for blk, _ in self.blocks.values():
+            if(blk.bid == block.pbid.bid):
+                self.g.add_edge(block.bid, block.pbid.bid)
+            if(blk.pbid != 0 and blk.pbid.bid == block.bid):
+                self.g.add_edge(blk.bid, block.bid)
+
         
         if is_long:
             for blk, _ in self.blocks.values():

@@ -180,8 +180,8 @@ class Simulation:
             print("bug in simulation.handle()")
 
     def draw_bc(self, nid):
-        print(self.nodes[nid].blockchain)
-        return 
+        # print(self.nodes[nid].blockchain)
+        # return 
         cur = self.nodes[nid].blockchain.head
         lchain = []
         while(cur != 0):
@@ -190,11 +190,7 @@ class Simulation:
 
         colormap = []
         for blk in self.nodes[nid].blockchain.g:
-            if(self.nodes[nid].blockchain.blocks[blk][0].miner != -1 and \
-                self.nodes[nid].blockchain.blocks[blk][0].miner.nid == ADV_NID):
-                colormap.append('green')
-            elif(blk in lchain): colormap.append('red')
-            else: colormap.append('blue')
+            colormap.append('blue')
         nx.draw(self.nodes[nid].blockchain.g, 
                 nx.drawing.nx_agraph.graphviz_layout(self.nodes[nid].blockchain.g, prog='dot'),
                 node_color=colormap, node_size=40, arrowsize=5, label=True)

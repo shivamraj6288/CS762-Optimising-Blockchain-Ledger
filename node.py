@@ -352,7 +352,7 @@ class Node:
 
         if is_longest:
             self.longest_chain_length+=1
-            if self.longest_chain_length>=max_length_blockchain and self.empty_block_mining==False:
+            if len(self.blockchain.blocks)>=max_length_blockchain and self.empty_block_mining==False:
                 self.startReGenesis(block=event.block,start_time=event.time)
             
                     
@@ -393,7 +393,7 @@ class Node:
         if is_longest:
             debug(event.block)
             self.longest_chain_length+=1
-            if self.longest_chain_length>=max_length_blockchain and self.empty_block_mining==False:
+            if len(self.blockchain.blocks)>=max_length_blockchain and self.empty_block_mining==False:
                 self.startReGenesis(block=event.block,start_time=event.time)
             # print(f"{event.block}, Time:{pretty(event.time,10)}")
             
