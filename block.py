@@ -1,9 +1,9 @@
 import copy
 from operator import is_ 
-from utils import pretty
+from utils import *
 from params import *
 import networkx as nx
-from main import nodes 
+
 
 # This data structure contains all the details of a single block and the blockchain
 
@@ -18,7 +18,7 @@ class Blockchain:
         block.time=time 
         self.blocks[block.bid] = (block, time) 
 
-        if(block.length >= self.head.length or block.miner.nid == ADV_NID):
+        if(block.length >= self.head.length):
             for blk, _ in self.blocks.values():
                 if(blk.bid == block.pbid.bid):
                     self.g.add_edge(block.bid, block.pbid.bid)
@@ -69,6 +69,11 @@ class Blockchain:
     def balance(self, nid):
         return self.head.balance[nid]
 
+    def __str__(self):
+        for a in self.blocks.values():
+            print(a)
+        return ("Blocks Printed")
+
 class Block:
     def __init__(self, bid, pbid, txnIncluded, miner, regPbid=None):
         self.bid = bid # block id
@@ -92,6 +97,7 @@ class Block:
             self.balance = [0]*NUM_NODES
 
         for a in self.txnIncluded: # updating balance of all the user 
+            # debug(a.sender)
             if a.sender != -1:
                 self.balance[a.sender.nid] -= a.value
             self.balance[a.receiver.nid] += a.value
@@ -123,18 +129,19 @@ class RegBlock(Block):
         # accIncluded stores all the accounts whose balance is stored in this regenesis
         self.accIncluded=set()
         if not first:
-            self.accIncluded=copy.deepcopy(pbid.accIncluded)
+            for a in pbid.accIncluded:
+                self.accIncluded.add(a)
+            # self.accIncluded=copy.deepcopy(pbid.accIncluded)
         for a in accIncluded:
             self.accIncluded.add(a)
-        
-        txns=set()
-        for a in txnIncluded:
-            a.sender=nodes[a.sender]
-            a.receiver=nodes[a.receiver]
-
         
         
 
         self.accIncluded=accIncluded
         super().__init__(bid=bid, pbid=pbid, txnIncluded=txnIncluded, miner=miner)
-        
+
+    def __str__ (self):
+        if self.pbid!=0:
+            return f"Id:{pretty(self.bid)}, Parent:{pretty(self.pbid.bid)}, Miner: {self.miner}, Accounts:{pretty(len(self.accIncluded), 5)}"
+        else :
+            return f"Id:{pretty(self.bid)}, Type: RegBlock Parent:{pretty(-1)}, Miner: {self.miner}, Accounts:{pretty(len(self.accIncluded), 5)}"  

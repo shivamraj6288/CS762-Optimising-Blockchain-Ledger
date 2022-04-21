@@ -13,7 +13,8 @@ from params import *
 from adversary import *
 from stubborn import *
 # from node import nodes, create_nodes
-from node import *
+from node import create_nodes
+import node 
 
 
 
@@ -36,8 +37,9 @@ class Simulation:
         #     Node(nid=i, speed=1, genesis=self.gblock, miningTime=ttmine[i])
         #     for i in range(no_slow, no_nodes)
         # ]
+        self.slow=slow 
         create_nodes(no_nodes=no_nodes,slow = slow, ttmine=ttmine)
-        self.nodes = nodes 
+        self.nodes = node.nodes 
         self.txngen_mean = txngen_mean
         self.total_all_blocks_gen = 0
         initLatency(no_nodes)
@@ -178,6 +180,8 @@ class Simulation:
             print("bug in simulation.handle()")
 
     def draw_bc(self, nid):
+        print(self.nodes[nid].blockchain)
+        return 
         cur = self.nodes[nid].blockchain.head
         lchain = []
         while(cur != 0):
@@ -209,17 +213,94 @@ class Simulation:
         print(unique_heads)
 
     def stats(self):
+        print("Not Decided")
 
-        cur = self.nodes[0].blockchain.head
-        adv_blocks, total_blocks = 0, 0
-        while(cur.miner != -1):
-            total_blocks += 1
-            if(cur.miner.nid == ADV_NID):
-                adv_blocks += 1
-            cur = cur.pbid
-        print("MPU_node_adv =", adv_blocks/self.nodes[ADV_NID].blockchain.total_adv_blocks_gen)
-        print("MPU_node_overall =", total_blocks/(self.total_all_blocks_gen+self.nodes[ADV_NID].blockchain.total_adv_blocks_gen))
-        print("Fraction of attaker blocks in main chain = ", adv_blocks/total_blocks)
+        # cur = self.nodes[0].blockchain.head
+        # adv_blocks, total_blocks = 0, 0
+        # while(cur.miner != -1):
+        #     total_blocks += 1
+        #     if(cur.miner.nid == ADV_NID):
+        #         adv_blocks += 1
+        #     cur = cur.pbid
+        # print("MPU_node_adv =", adv_blocks/self.nodes[ADV_NID].blockchain.total_adv_blocks_gen)
+        # print("MPU_node_overall =", total_blocks/(self.total_all_blocks_gen+self.nodes[ADV_NID].blockchain.total_adv_blocks_gen))
+        # print("Fraction of attaker blocks in main chain = ", adv_blocks/total_blocks)
+    def draw_chain_time_graph(self):
+        data = self.nodes[0].size_of_blockchain
+        time = []
+        bsize = []
+        for a in data:
+            time.append(a[1])
+            bsize.append(a[0])
+        plt.figure(1)
+        plt.plot(time,bsize)
+        plt.xlabel("time")
+        plt.ylabel("size")
+        plt.title("Size Vs Time")
+        plt.savefig("Slow Node: size vs time")
+        plt.show()
+        print("Figure Saved by name 'Slow Node : size vs time'")
+
+        data = self.nodes[-1].size_of_blockchain
+        time = []
+        bsize = []
+        for a in data:
+            time.append(a[1])
+            bsize.append(a[0])
+        plt.figure(2)
+        plt.plot(time,bsize)
+        plt.xlabel("time")
+        plt.ylabel("size")
+        plt.title("Size Vs Time")
+        plt.savefig("Fast Node : size vs time")
+        print("Figure Saved by name 'Fast Node : size vs time'")
+    
+    def regenesis_stats(self):
+        print ("For Slow Node:")
+        time = 0.0
+        data = None
+        for i in range(0,int(self.slow*len(self.nodes))):
+            data = self.nodes[i].regenesisTime
+            if len(data)>0:
+                for a in data:
+                    time+=a
+                avg_time = time/len(data)
+                print (f"Regensis time for slow node: {avg_time}")
+
+                plt.plot(list(range(1,len(data)+1)), data)
+                plt.ylabel("Regenesis Time")
+                plt.title("Regensis TIme Graph")
+                plt.savefig("Slow Node Regenesis")
+                # plt.show()
+                print("Figure Saved by name 'Slow Node Regenesis'")
+                break 
+        
+        if len(data)==0:
+            print("No regensis in slow nodes")
+        print("\n")
+        print ("For Fast Node:")
+        time = 0.0
+        data = None
+        for i in range(int(self.slow*len(self.nodes)), len(self.nodes)):
+            data = self.nodes[i].regenesisTime
+            if len(data)>0:
+                for a in data:
+                    time+=a
+                avg_time = time/len(data)
+                print (f"Regensis time for slow node: {avg_time}")
+
+                plt.plot(list(range(1,len(data)+1)), data)
+                plt.ylabel("Regenesis Time")
+                plt.title("Regensis TIme Graph")
+                plt.savefig("Fast Node Regenesis")
+                # plt.show()
+                print("Figure Saved by name 'Fast Node Regenesis'")
+                break 
+        if len(data)==0:
+            print("No regensis in fast nodes")
+
+
+
 
 
             
@@ -243,8 +324,10 @@ if __name__ == "__main__":
         print("Choose Option:")
         print("1. View Blockchain Network")
         print("2. View Blockchain of a node")
-        print("3. View Stats")
-        print("4. QUIT")
+        # print("3. View Stats")
+        print("4. Size of Chain vs Time graph")
+        print("5. Regenesis time stats")
+        print("6. QUIT")
         try:
             query=int(input())
         except:
@@ -255,8 +338,13 @@ if __name__ == "__main__":
         elif query==2:
             bid=int(input("Id of Node "))
             simulator.draw_bc(bid)
-        elif query==3:
-            simulator.stats()
+        # elif query==3:
+        #     simulator.stats()
+        elif query == 4:
+            # nid = int(input("Id of Node"))
+            simulator.draw_chain_time_graph()
+        elif query == 5:
+            simulator.regenesis_stats()
         else:
             break 
     

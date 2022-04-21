@@ -1,4 +1,7 @@
+from gc import DEBUG_SAVEALL
 import numpy as np
+
+debug_value = False 
 
 p = 0
 def initLatency(n):         # initializing a 2d array for rho
@@ -22,3 +25,8 @@ def pretty(val : int, pad : int = 0):
         return "{0:<{1}}".format(val,pad)
     else:
         return "{0:#0{1}x}".format(val,10)
+
+def debug(x):
+    if not debug_value:
+        return 
+    print(x)

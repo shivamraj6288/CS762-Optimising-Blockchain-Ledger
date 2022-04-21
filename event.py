@@ -34,23 +34,23 @@ class BlockMined(Event):
 class RegBlockRecv(Event):
     def __init__(self, time, sender, receiver, block):
         self.block=block 
-        Event.__init__(time, eventId=5,sender=sender,receiver=receiver)
+        Event.__init__(self, time, eventId=5,sender=sender,receiver=receiver)
 
 
 class RegBlockMined(Event):
     def __init__(self, time, block):
         self.block=block
-        Event.__init__(time, eventId=6)
+        Event.__init__(self, time, eventId=6)
 
 class EmptyBlockRecv(Event):
     def __init__(self, time, sender, receiver, block):
         self.block = block 
-        Event.__init__(time, eventId=7, sender = sender, receiver=receiver)
+        Event.__init__(self, time, eventId=7, sender = sender, receiver=receiver)
 
 class EmptyBlockMined(Event):
     def __init__(self, time, block):
         self.block = block 
-        Event.__init__(time, eventId=8)
+        Event.__init__(self, time = time, eventId=8)
 
 
 
